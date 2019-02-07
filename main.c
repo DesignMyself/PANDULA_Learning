@@ -15,6 +15,7 @@
 #include <drivers/rt_drv_pwm.h>
 #include "stm32l4xx_hal.h"
 #include "Display.h"
+#include "MONI_IIC.H"
 #define event4_flag 1<<4
 static struct rt_event event4;//用来控制往LCD发送数据
 /* using RED LED in RGB */
@@ -57,11 +58,40 @@ void LCD_Display(void *parameter)
 
 void task_2_entry(void *parameter)
 {
-	uint8_t count=0;
+	uart3_open("uart3");
+	uart1_open("uart1");
+	uint16_t count=0;
+	
 	while(1)
 	{
 		count=uart3_getchar();
-		uart3_putchar(count);
+		uart1_putchar(count);
+	
+	}
+	
+	
+}
+void temperature_Read(void *parameter)
+{
+	float temperature, humidity;
+	while(1)
+	{
+						temperature = AHT10_Read_Temperature();
+            humidity = AHT10_Read_Humidity();
+            if(temperature < 0)
+            {
+               lcd_show_string(30 + 40, 190, 16,"-");	//显示负号
+                temperature = -temperature;				//转为正数
+            }
+            else
+               lcd_show_string(30 + 40, 190, 16," ");	//去掉负号
+
+            lcd_show_num(30 + 48, 190, temperature, 2, 16);					//显示温度整数
+            lcd_show_num(30 + 72, 190, (uint32_t)(temperature * 10) % 10, 1, 16);	//显示温度小数
+
+            lcd_show_num(30 + 48, 210, humidity, 2, 16);						//显示湿度整数
+            lcd_show_num(30 + 72, 210, (uint32_t)(humidity * 10) % 10, 1, 16);	//显示湿度小数
+						rt_thread_delay(100);
 	
 	}
 	
@@ -136,20 +166,28 @@ int main(void)
 		rt_event_init(&event4, "event4", RT_IPC_FLAG_FIFO);
 		//MX_TIM2_Init(1000,80);
 	
+		 while(AHT10_Init())			//初始化AHT10
+    {
+        lcd_show_string(30, 170,  16, "AHT10 Error");
+        rt_thread_delay(200);
+        lcd_set_color(BLACK, YELLOW);
+        rt_thread_delay(200);
+    }
+	
 		//IWDG_Init(IWDG_PRESCALER_8,50);
 		////独立看门狗开启——1    8*200/32ms,看门狗没有中断，利用HSI的32.165k的晶振
 		rt_thread_idle_sethook(idle_hook);
 		iwdg_sample();
 	
 	/*********启动任务1********/
-		task_1=rt_thread_create("task_1",LCD_Display,RT_NULL,1024,4,10);
+		task_1=rt_thread_create("task_1",temperature_Read,RT_NULL,1024,4,10);
 		if(task_1!=RT_NULL)
 		{
 			
 			rt_thread_startup(task_1);
 		}
 			/*********启动任务2********/
-			task_2=rt_thread_create("task_2",MPU_Get_Data,RT_NULL,1024,20,10);
+			task_2=rt_thread_create("task_2",task_2_entry,RT_NULL,1024,20,10);
 		if(task_2!=RT_NULL)
 		{
 			rt_thread_startup(task_2);
