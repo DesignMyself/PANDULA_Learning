@@ -161,7 +161,7 @@ static rt_err_t uart3_intput(rt_device_t dev, rt_size_t size)
 rt_uint8_t uart1_getchar(void)
 {
     rt_uint32_t e;
-    rt_uint8_t ch;
+    rt_uint16_t ch;
 
     /* 读取1字节数据 */
     while (rt_device_read(uart_device1, 0, &ch, 1) != 1)
@@ -197,14 +197,14 @@ rt_uint8_t uart3_getchar(void)
 {
     rt_uint32_t e;
     rt_uint8_t ch1;
-
+		//rt_device_read(uart_device3, 0, &ch1, 1);
     /* 读取1字节数据 */
-    while (rt_device_read(uart_device3, 0, &ch1, 1) != 1)
+    while (rt_device_read(uart_device3, 0, &ch1,2) != 1)
     {
          /* 接收事件 */
         rt_event_recv(&event3, UART3_RX_EVENT,RT_EVENT_FLAG_AND | RT_EVENT_FLAG_CLEAR,RT_WAITING_FOREVER, &e);
 				
-
+				
 			
 		}
 		return ch1;
@@ -302,7 +302,7 @@ rt_err_t uart1_open(const char *name)
         }
 
         /* 打开设备，以可读写、中断方式 */
-        res = rt_device_open(uart_device1, RT_DEVICE_OFLAG_RDWR | RT_DEVICE_FLAG_INT_RX );       
+        res = rt_device_open(uart_device1, RT_DEVICE_OFLAG_RDWR | RT_DEVICE_FLAG_DMA_RX );       
         /* 检查返回值 */
         if (res != RT_EOK)
         {
@@ -379,7 +379,7 @@ rt_err_t uart3_open(const char *name)
         }
 
         /* 打开设备，以可读写、中断方式 */
-        res = rt_device_open(uart_device3, RT_DEVICE_OFLAG_RDWR | RT_DEVICE_FLAG_INT_RX );       
+        res = rt_device_open(uart_device3, RT_DEVICE_OFLAG_RDWR | RT_DEVICE_FLAG_DMA_RX );       
         /* 检查返回值 */
         if (res != RT_EOK)
         {
